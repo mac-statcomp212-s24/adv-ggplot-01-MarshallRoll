@@ -1,7 +1,7 @@
 ---
 title: "Advanced visualization with ggplot2"
 subtitle: "Challenge 1"
-author: "YOUR NAME"
+author: "Marshall Roll"
 format: 
   html:
     self-contained: true
@@ -45,18 +45,96 @@ You will need to use reference pages and documentation to discover necessary too
 # Setup
 
 ```{r}
-# Code for loading packages and reading in data
+library(tidyverse)
+library(lubridate)
+library(ggpubr)
+weather <- read_csv("https://lmyint.github.io/212_spring_2024/data/sfo_weather.csv")
 ```
-
 
 
 # Visualization
 
 ```{r}
-# Code for recreating the visualization
-# Use as many code chunks as you need to organize your work well
+first_days <- weather %>% 
+  filter(Day == 1) %>% 
+  pull(date) 
+
+first_days <- first_days[-1]
+
+weather <- weather %>% 
+  mutate(monthAbbrev = month.abb[Month])
+
+record_temp <- weather %>% 
+  filter(Record == TRUE)
+
+temp <- weather %>% 
+  ggplot(aes(x = date)) + 
+  geom_linerange(aes(ymin = RecordLow, ymax = RecordHigh), 
+                 color = "#ECEBE3", linewidth = 1) +
+  geom_linerange(aes(ymin = NormalLow, ymax = NormalHigh),
+                 color = "#C8B8BA", linewidth = 1) +
+  geom_vline(xintercept = first_days, linetype = "dashed", 
+             color = "lightgray") +
+  geom_linerange(aes(ymin = Low, ymax = High), 
+                 color = "#A90248", linewidth = 1) +
+  geom_point(data = record_temp, aes(x = date, y = RecordHigh), 
+             shape = 25, fill = "black") +
+  scale_x_date(date_breaks = "1 month", expand = c(0,0), date_labels = "%b") +
+  scale_y_continuous(breaks = seq(0, 120, by = 40)) + 
+  coord_cartesian(ylim = c(-30, 130)) +
+  geom_text(aes(x = date, y = RecordHigh + 20, label = RecordText),
+            size = 2) +
+  labs(x = "", y = "", title = "Temperature") +
+  theme_classic() + 
+  theme(axis.line.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        plot.title = element_text(face="bold"),
+        axis.text.x = element_text(hjust = -1))
+  
 ```
 
+```{r}
+last_days <- weather %>% 
+  group_by(Month) %>% 
+  filter(Day == max(Day)) %>% 
+  pull(date)
+
+last_days <- last_days[-12]
+
+records <- weather %>%
+  filter(RecordP == TRUE)
+
+final_precip <- weather %>% 
+  group_by(Month) %>% 
+  filter(Day == max(Day)) %>% 
+  select(date, CulmPrec)
+
+precip <- weather %>% 
+  ggplot(aes(x = date, y = CulmPrec, group = Month)) + 
+  geom_area(color = "skyblue", fill = "#ECEBE3") + 
+  geom_point(data = records, aes(x = date, y = CulmPrec), 
+             shape = 25, fill = "black") +
+  geom_vline(xintercept = last_days, color = "lightgray") +
+  scale_x_date(date_breaks = "1 month", expand = c(0,0), date_labels = "%b") +
+  scale_y_continuous(breaks = seq(0, 12, by = 4)) + 
+  coord_cartesian(ylim = c(0,8)) +
+  geom_text(data = final_precip, 
+            aes(x = date - 5, y = CulmPrec + 0.2, label = CulmPrec), 
+            size = 2.5) + 
+  labs(x = "", y = "", title = "Precipitation") +
+  theme_classic() + 
+  theme(axis.line.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        plot.title = element_text(face="bold"),
+        axis.text.x = element_blank())
+```
+
+```{r}
+plot <- ggarrange(temp, precip, nrow = 2, heights = c(2,1), align = c("v")) 
+
+annotate_figure(plot, top = text_grob("SFO Weather in 2011", 
+               color = "black", size = 12))
+```
 
 
 
